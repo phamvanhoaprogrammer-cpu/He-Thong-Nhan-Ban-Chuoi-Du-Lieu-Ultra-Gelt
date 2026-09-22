@@ -2,10 +2,10 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
 <meta name="description" content="Ultra-Gen — hệ thống nhân bản và biến đổi nội dung hiệu năng cao.">
-<title>ULTRA-GEN • Enterprise Content Engine</title>
+<title>ULTRA-GEN • Enterprise Content Intelligence</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,18 +16,22 @@
 
 <style>
 :root{
-  --bg:#050b14; --panel:#0b1422; --panel2:#0e1929; --line:#1c2b40;
-  --muted:#7f91aa; --text:#e8eef7; --primary:#36d399; --blue:#60a5fa;
+  --bg:#060816; --panel:#0d1020; --panel2:#11162a; --line:#29304a;
+  --muted:#8791aa; --text:#f3f5fb; --primary:#7c5cff; --cyan:#22d3ee;
+  --pink:#f472b6; --gold:#fbbf24; --blue:#60a5fa;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; color:var(--text);
   background:
-    radial-gradient(circle at 15% 0%, rgba(37,99,235,.13), transparent 30%),
-    radial-gradient(circle at 85% 10%, rgba(16,185,129,.10), transparent 28%),
-    linear-gradient(180deg,#050b14 0%,#07101c 48%,#050a12 100%);
+    radial-gradient(circle at 8% 0%, rgba(124,92,255,.20), transparent 27%),
+    radial-gradient(circle at 92% 8%, rgba(34,211,238,.13), transparent 25%),
+    radial-gradient(circle at 50% 100%, rgba(244,114,182,.08), transparent 35%),
+    linear-gradient(180deg,#070816 0%,#090b18 48%,#05060d 100%);
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  overscroll-behavior:none;
+  touch-action:manipulation;
 }
 body:before{
   content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;
@@ -39,10 +43,10 @@ button,input,textarea{font:inherit}
 button{cursor:pointer}
 textarea,input[type=number]{user-select:text;-webkit-user-select:text}
 .glass{
-  background:linear-gradient(180deg,rgba(14,25,41,.86),rgba(8,17,29,.82));
-  border:1px solid rgba(74,96,126,.28);
-  box-shadow:0 20px 60px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.025);
-  backdrop-filter:blur(18px);
+  background:linear-gradient(145deg,rgba(20,23,43,.90),rgba(9,11,23,.90));
+  border:1px solid rgba(124,92,255,.20);
+  box-shadow:0 24px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035);
+  backdrop-filter:blur(22px);
 }
 .card{border-radius:22px}
 .input{
@@ -76,6 +80,60 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
 @media(max-width:640px){
   .hero-title{font-size:1.65rem!important}
 }
+
+/* Premium QR camera */
+.qr-stage{
+  position:relative;
+  width:min(100%,430px);
+  aspect-ratio:1/1;
+  margin:0 auto;
+  border-radius:28px;
+  overflow:hidden;
+  background:#02030a;
+  border:1px solid rgba(124,92,255,.42);
+  box-shadow:0 24px 70px rgba(0,0,0,.45),0 0 50px rgba(124,92,255,.10);
+}
+.qr-stage video{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transform:translateZ(0);
+}
+.qr-shade{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at center,transparent 0 31%,rgba(2,3,10,.58) 52%,rgba(2,3,10,.78) 100%);
+}
+.qr-frame{
+  position:absolute;left:50%;top:50%;width:68%;aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  border-radius:22px;
+  box-shadow:0 0 0 999px rgba(0,0,0,.08),0 0 28px rgba(34,211,238,.14);
+}
+.qr-corner{
+  position:absolute;width:42px;height:42px;border-color:#fff;border-style:solid;
+  filter:drop-shadow(0 0 8px rgba(34,211,238,.85));
+}
+.qr-corner.tl{left:0;top:0;border-width:4px 0 0 4px;border-radius:12px 0 0 0}
+.qr-corner.tr{right:0;top:0;border-width:4px 4px 0 0;border-radius:0 12px 0 0}
+.qr-corner.bl{left:0;bottom:0;border-width:0 0 4px 4px;border-radius:0 0 0 12px}
+.qr-corner.br{right:0;bottom:0;border-width:0 4px 4px 0;border-radius:0 0 12px 0}
+.qr-scanline{
+  position:absolute;left:8%;right:8%;top:15%;height:2px;
+  background:linear-gradient(90deg,transparent,#22d3ee,#7c5cff,transparent);
+  box-shadow:0 0 18px rgba(34,211,238,.95);
+  animation:scanline 2.2s ease-in-out infinite;
+}
+@keyframes scanline{0%,100%{top:15%;opacity:.45}50%{top:85%;opacity:1}}
+.capture-badge{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  white-space:nowrap;padding:8px 13px;border-radius:999px;
+  background:rgba(5,7,18,.78);border:1px solid rgba(255,255,255,.12);
+  color:#e9eaff;font-size:11px;font-weight:800;backdrop-filter:blur(14px);
+}
+@media(max-width:640px){
+  .qr-stage{width:min(100%,360px);border-radius:24px}
+  .qr-corner{width:36px;height:36px}
+}
+
 </style>
 </head>
 
@@ -92,7 +150,7 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
           Enterprise Edition
         </div>
         <h1 class="hero-title text-3xl sm:text-4xl font-black tracking-tight">
-          <span class="bg-gradient-to-r from-emerald-300 via-cyan-300 to-blue-400 bg-clip-text text-transparent">ULTRA-GEN</span>
+          <span class="bg-gradient-to-r from-violet-300 via-cyan-300 to-fuchsia-400 bg-clip-text text-transparent">ULTRA-GEN</span>
           <span class="text-slate-100"> Content Engine</span>
         </h1>
         <p class="text-slate-400 text-sm mt-2 max-w-2xl">
@@ -176,13 +234,22 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
           <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/jpg,image/bmp" class="hidden" onchange="handleImageUpload(event)">
 
           <div id="qrScannerPanel" class="hidden space-y-2">
-            <video id="qrVideo" class="scan-preview rounded-xl" autoplay muted playsinline></video>
+            <div class="qr-stage">
+              <video id="qrVideo" autoplay muted playsinline></video>
+              <div class="qr-shade"></div>
+              <div class="qr-frame">
+                <span class="qr-corner tl"></span><span class="qr-corner tr"></span>
+                <span class="qr-corner bl"></span><span class="qr-corner br"></span>
+                <span class="qr-scanline"></span>
+              </div>
+              <div class="capture-badge"><i data-lucide="scan-line" class="w-3.5 h-3.5 inline mr-1 text-cyan-300"></i>Đưa mã QR vào 4 góc khung</div>
+            </div>
             <canvas id="qrCanvas" class="hidden"></canvas>
             <div class="flex gap-2">
               <button onclick="stopQrScanner()" class="btn flex-1 rounded-xl py-2 bg-slate-800 border border-slate-700 text-xs font-bold">
                 <i data-lucide="square" class="w-3.5 h-3.5 inline mr-1"></i>Dừng camera
               </button>
-              <button onclick="captureQrFromCamera()" class="btn flex-1 rounded-xl py-2 bg-emerald-500 text-slate-950 text-xs font-bold">
+              <button onclick="captureQrFromCamera()" class="btn flex-1 rounded-xl py-2 bg-violet-500 text-white text-xs font-bold">
                 <i data-lucide="scan" class="w-3.5 h-3.5 inline mr-1"></i>Quét ngay
               </button>
             </div>
@@ -228,7 +295,7 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
       </div>
 
       <div class="grid grid-cols-3 gap-2.5 mt-6">
-        <button id="btnGenerate" onclick="generateData()" class="btn rounded-xl py-3 bg-emerald-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-500/10">
+        <button id="btnGenerate" onclick="generateData()" class="btn rounded-xl py-3 bg-violet-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-500/10">
           <i data-lucide="play" class="w-4 h-4 inline mr-1"></i>Tạo dữ liệu
         </button>
         <button onclick="selectAllText()" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs sm:text-sm">
@@ -439,6 +506,12 @@ function setCaptureStatus(text, ok=false){
   el.className=`text-[10px] ${ok?'text-emerald-300':'text-slate-500'}`;
 }
 
+function successHaptic(){
+  try{
+    if('vibrate' in navigator) navigator.vibrate([18, 28, 18]);
+  }catch(_){}
+}
+
 function putCapturedText(text, source='capture'){
   const clean=(text||'').trim();
   if(!clean) return showToast('Không phát hiện được văn bản.','error');
@@ -456,10 +529,22 @@ async function startQrScanner(){
   try{
     stopQrScanner();
     qrStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1920},
+        height:{ideal:1920},
+        aspectRatio:{ideal:1}
+      },
       audio:false
     });
     $('qrVideo').srcObject=qrStream;
+    const track=qrStream.getVideoTracks()[0];
+    try{
+      const caps=track.getCapabilities?.();
+      if(caps?.focusMode?.includes('continuous')){
+        await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+      }
+    }catch(_){}
     $('qrScannerPanel').classList.remove('hidden');
     setCaptureStatus('Camera đang hoạt động');
     showToast('Đưa mã QR vào giữa khung hình.');
@@ -470,8 +555,11 @@ async function startQrScanner(){
   }
 }
 
-function scanQrFrame(){
+let lastQrScan=0;
+function scanQrFrame(ts=0){
   if(!qrStream) return;
+  if(ts-lastQrScan<80){ qrScanTimer=requestAnimationFrame(scanQrFrame); return; }
+  lastQrScan=ts;
   const video=$('qrVideo'), canvas=$('qrCanvas');
   if(video.readyState>=2 && video.videoWidth){
     canvas.width=video.videoWidth; canvas.height=video.videoHeight;
@@ -480,6 +568,7 @@ function scanQrFrame(){
     const image=ctx.getImageData(0,0,canvas.width,canvas.height);
     const code=jsQR(image.data,image.width,image.height,{inversionAttempts:'attemptBoth'});
     if(code && code.data){
+      successHaptic();
       putCapturedText(code.data,'qr');
       stopQrScanner();
       return;
@@ -524,6 +613,7 @@ async function handleImageUpload(event){
     // Ưu tiên QR trước vì kết quả thường chính xác tuyệt đối hơn OCR.
     const qrText=await detectQrFromImage(file);
     if(qrText){
+      successHaptic();
       putCapturedText(qrText,'qr');
       $('ocrProgressLabel').textContent='Đã phát hiện QR';
       $('ocrProgressBar').style.width='100%';
@@ -549,6 +639,7 @@ async function handleImageUpload(event){
 
     const text=(result.data?.text||'').trim();
     if(!text) throw new Error('Không tìm thấy văn bản');
+    successHaptic();
     putCapturedText(text,'ocr');
     setCaptureStatus('OCR hoàn tất',true);
     showToast('Đã tự động điền văn bản nhận diện vào ô nhập.');
@@ -701,6 +792,23 @@ window.addEventListener('load',()=>{
     }
   },500);
 });
+
+// UX protection: prevent accidental browser zoom and gesture zoom.
+// Note: client-side code cannot securely prevent source inspection; it only disables common accidental gestures/context menu.
+(function(){
+  let lastTouchEnd=0;
+  document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('touchend',e=>{
+    const now=Date.now();
+    if(now-lastTouchEnd<=280) e.preventDefault();
+    lastTouchEnd=now;
+  },{passive:false});
+})();
+
 </script>
 </body>
 </html>
