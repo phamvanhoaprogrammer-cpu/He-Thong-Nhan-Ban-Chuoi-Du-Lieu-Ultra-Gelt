@@ -191,6 +191,28 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
   .qr-scanline,.qr-loading-ring{animation:none}
 }
 
+
+/* iPhone performance tuning */
+html,body{
+  -webkit-text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent;
+}
+button,input,textarea,select{
+  font:inherit;
+}
+button{
+  touch-action:manipulation;
+}
+.qr-stage, #qrScannerPanel{
+  transform:translateZ(0);
+  -webkit-transform:translateZ(0);
+  contain:layout paint style;
+}
+.qr-stage video{
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
 </style>
 </head>
 
@@ -356,7 +378,7 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
           <i data-lucide="play" class="w-4 h-4 inline mr-1"></i>Tạo dữ liệu
         </button>
         <button onclick="selectAllText()" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs sm:text-sm">
-          <i data-lucide="scan-text" class="w-4 h-4 inline mr-1"></i>Chọn
+          <i data-lucide="list-checks" class="w-4 h-4 inline mr-1"></i>Chọn
         </button>
         <button onclick="clearAll()" class="btn rounded-xl py-3 bg-rose-500/10 border border-rose-500/25 text-rose-300 font-bold text-xs sm:text-sm">
           <i data-lucide="rotate-ccw" class="w-4 h-4 inline mr-1"></i>Reset
@@ -513,8 +535,9 @@ async function pasteText(){
   }
 }
 function selectAllText(){
-  if(!$('inputText').value.trim()) return showToast('Chưa có nội dung đầu vào.','error');
-  $('inputText').focus(); $('inputText').select();
+  if(!requireInput('chọn tất cả')) return;
+  $('inputText').focus({preventScroll:true});
+  $('inputText').select();
   showToast('Đã chọn toàn bộ nội dung.');
 }
 function clearModes(){
@@ -522,6 +545,7 @@ function clearModes(){
   showToast('Đã bỏ chọn các chế độ biến đổi.');
 }
 function clearAll(){
+  if(!requireInput('reset')) return;
   if(state.processing) return showToast('Tác vụ đang chạy, hãy chờ hoàn tất trước khi reset.','error');
   $('inputText').value=''; $('outputArea').value=''; $('inputQuantity').value=1000;
   state.results=[]; updateInputMeta(); setStats(0,0,'Idle');
@@ -592,6 +616,24 @@ function putCapturedText(text, source='capture'){
   updateInputMeta();
   $('inputText').focus();
   showToast(source==='qr' ? 'Đã đọc nội dung QR và đưa vào ô nhập.' : 'Đã nhận diện văn bản từ ảnh và đưa vào ô nhập.');
+}
+
+
+function scrollToInputCenter(){
+  const el=$('inputText');
+  if(!el) return;
+  const rect=el.getBoundingClientRect();
+  const targetY=window.scrollY + rect.top - (window.innerHeight/2) + (rect.height/2);
+  window.scrollTo({top:Math.max(0,targetY),behavior:'smooth'});
+}
+
+function scrollToScannerCenter(){
+  const el=$('qrScannerPanel');
+  if(!el) return;
+  // Account for iOS Safari dynamic toolbar/status area.
+  const rect=el.getBoundingClientRect();
+  const targetY=window.scrollY + rect.top - (window.innerHeight/2) + (rect.height/2);
+  window.scrollTo({top:Math.max(0,targetY),behavior:'smooth'});
 }
 
 async function startQrScanner(){
@@ -837,7 +879,32 @@ async function detectQrFromImage(file){
 
 window.addEventListener('beforeunload',stopQrScanner);
 
-async function generateData(){
+async 
+function requireInput(actionLabel='thao tác'){
+  const input=$('inputText');
+  const value=(input?.value||'').trim();
+
+  if(!value){
+    showToast(`Vui lòng nhập hoặc quét nội dung trước khi ${actionLabel}.`,'error');
+
+    // Highlight input and center it on screen.
+    if(input){
+      input.classList.add('ring-2','ring-red-400/70','border-red-400/70');
+      scrollToInputCenter();
+      setTimeout(()=>{
+        input.focus({preventScroll:true});
+      },420);
+      setTimeout(()=>{
+        input.classList.remove('ring-2','ring-red-400/70','border-red-400/70');
+      },1800);
+    }
+    return false;
+  }
+  return true;
+}
+
+function generateData(){
+  if(!requireInput('tạo dữ liệu')) return;
   if(state.processing) return;
   const input=$('inputText').value;
   const qty=Number($('inputQuantity').value);
