@@ -75,6 +75,14 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
 .scan-drop:hover{border-color:rgba(54,211,153,.65);background:rgba(10,35,33,.45)}
 
 .status-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 14px #34d399}
+.stat-complete-icon{
+  width:28px;height:28px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(34,197,94,.14);
+  border:1px solid rgba(34,197,94,.32);
+  color:#4ade80;
+  box-shadow:0 0 18px rgba(34,197,94,.16);
+}
 .toast{animation:toastIn .25s ease}
 @keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 @media(max-width:640px){
@@ -676,7 +684,16 @@ function clearAll(){
 function setStats(processed,target,status){
   $('statProcessed').textContent=processed.toLocaleString();
   $('statTarget').textContent=target.toLocaleString();
-  $('statStatus').textContent=status;
+
+  const statusEl=$('statStatus');
+  if(status==='Completed'){
+    statusEl.innerHTML='<span class="stat-complete-icon" title="Hoàn tất" aria-label="Hoàn tất"><i data-lucide="check" class="w-4 h-4"></i></span>';
+    statusEl.className='text-lg font-black mt-1 text-emerald-300 flex items-center';
+    lucide.createIcons();
+  }else{
+    statusEl.textContent=status;
+    statusEl.className=`text-lg font-black mt-1 ${status==='Processing'?'text-amber-300':'text-slate-400'}`;
+  }
 }
 function setBusy(busy){
   state.processing=busy;
@@ -838,7 +855,7 @@ async function startQrScanner(){
     });
 
     setCaptureStatus('Camera đang hoạt động');
-    showToast('Đưa mã QR vào giữa khung hình.');
+    showToast('Vui lòng đưa mã QR hoặc tài liệu vào khung hình.','success','Khởi động máy quét thành công');
     lastQrScan=0;
     qrScanTimer=requestAnimationFrame(scanQrFrame);
   }catch(err){
@@ -927,9 +944,19 @@ async function handleQrSuccess(text){
   setTimeout(()=>stage?.classList.remove('qr-success'),700);
 }
 
-function captureQrFromCamera(){
+async function captureQrFromCamera(){
   if(!qrStream) return startQrScanner();
-  scanQrFrame();
+
+  // Manual capture: QR first, then OCR fallback for a document.
+  if(qrScanTimer) cancelAnimationFrame(qrScanTimer);
+  qrScanTimer=null;
+  const ok=await captureDocumentFromCamera();
+
+  // Resume live QR scanning only when the camera is still open.
+  if(!ok && qrStream){
+    setCaptureStatus('Đưa QR hoặc tài liệu rõ vào khung hình');
+    qrScanTimer=requestAnimationFrame(scanQrFrame);
+  }
 }
 
 function stopQrScanner(){
@@ -945,6 +972,99 @@ function stopQrScanner(){
   if(panel) panel.classList.add('hidden');
   setCaptureStatus('Sẵn sàng');
   exitCameraFocusMode();
+}
+
+function isUsefulExtractedText(text, confidence=0){
+  const clean=(text||'').replace(/\s+/g,' ').trim();
+  if(!clean) return false;
+
+  // Reject OCR noise commonly produced by animals, scenery, clothing,
+  // textures and other images that do not contain meaningful text.
+  const alnum=(clean.match(/[A-Za-zÀ-ỹ0-9]/g)||[]).length;
+  const letters=(clean.match(/[A-Za-zÀ-ỹ]/g)||[]).length;
+  const digits=(clean.match(/[0-9]/g)||[]).length;
+  const visible=clean.replace(/\s/g,'').length;
+  const words=clean.split(/\s+/).filter(Boolean).length;
+
+  if(visible < 3) return false;
+  if(alnum < 3) return false;
+  if(alnum/Math.max(1,visible) < 0.30) return false;
+  if(confidence && confidence < 28 && alnum < 6) return false;
+  if(words===1 && letters<2 && digits<2) return false;
+
+  return true;
+}
+
+function showScanExtractionError(){
+  showToast(
+    'Không quét/trích xuất được dữ liệu. Vui lòng đưa mã QR hoặc tài liệu rõ, đủ sáng và có văn bản vào khung hình.',
+    'error',
+    'Không nhận diện được dữ liệu'
+  );
+  setCaptureStatus('Không trích xuất được');
+}
+
+async function captureDocumentFromCamera(){
+  if(!qrStream) return false;
+  const video=$('qrVideo');
+  const canvas=$('qrCanvas');
+  if(!video || !canvas || video.readyState<2 || !video.videoWidth) return false;
+
+  try{
+    const maxSide=1280;
+    const scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));
+    canvas.width=Math.max(1,Math.round(video.videoWidth*scale));
+    canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
+    const qrImage=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const qrCode=window.jsQR?.(qrImage.data,qrImage.width,qrImage.height,{inversionAttempts:'attemptBoth'});
+    if(qrCode?.data){
+      await handleQrSuccess(qrCode.data);
+      return true;
+    }
+
+    if(!window.Tesseract) throw new Error('Tesseract chưa tải được');
+
+    setCaptureStatus('Đang nhận diện tài liệu...');
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
+    if(!blob) throw new Error('Không tạo được ảnh chụp');
+
+    const result=await Tesseract.recognize(blob,'vie+eng',{
+      logger:m=>{
+        if(typeof m.progress==='number'){
+          const p=Math.round(m.progress*100);
+          setCaptureStatus(`Đang OCR tài liệu • ${p}%`);
+        }
+      }
+    });
+
+    const text=(result.data?.text||'').trim();
+    const confidence=Number(result.data?.confidence||0);
+    if(!isUsefulExtractedText(text,confidence)){
+      showScanExtractionError();
+      return false;
+    }
+
+    successHaptic();
+    putCapturedText(text,'ocr');
+    setCaptureStatus('Tài liệu đã nhận diện',true);
+    showToast('Đã trích xuất văn bản từ tài liệu.','success','Quét thành công');
+    stopQrScanner();
+
+    const input=$('inputText');
+    requestAnimationFrame(()=>{
+      input?.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>input?.focus({preventScroll:true}),220);
+    });
+    return true;
+  }catch(err){
+    console.error('Camera document OCR error:',err);
+    showScanExtractionError();
+    return false;
+  }
 }
 
 async function handleImageUpload(event){
@@ -994,15 +1114,15 @@ async function handleImageUpload(event){
     });
 
     const text=(result.data?.text||'').trim();
-    if(!text) throw new Error('Không tìm thấy văn bản');
+    const confidence=Number(result.data?.confidence||0);
+    if(!isUsefulExtractedText(text,confidence)) throw new Error('Ảnh không chứa văn bản đủ rõ để trích xuất');
     successHaptic();
     putCapturedText(text,'ocr');
     setCaptureStatus('OCR hoàn tất',true);
     showToast('Đã tự động điền văn bản nhận diện vào ô nhập.');
   }catch(err){
     console.error(err);
-    showToast('Không nhận diện được văn bản. Hãy dùng ảnh rõ hơn, đủ sáng và ít nghiêng.','error');
-    setCaptureStatus('Không nhận diện được');
+    showScanExtractionError();
   }finally{
     setTimeout(()=>$('ocrProgressPanel').classList.add('hidden'),1200);
   }
