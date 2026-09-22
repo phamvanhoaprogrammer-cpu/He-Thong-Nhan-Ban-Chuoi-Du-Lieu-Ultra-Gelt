@@ -99,7 +99,7 @@ textarea,input[type=number]{user-select:text;-webkit-user-select:text}
 }
 .qr-shade{
   position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(circle at center,transparent 0 31%,rgba(2,3,10,.58) 52%,rgba(2,3,10,.78) 100%);
+  background:radial-gradient(circle at center,transparent 0 37%,rgba(2,3,10,.18) 57%,rgba(2,3,10,.42) 100%);
 }
 .qr-frame{
   position:absolute;left:50%;top:50%;width:68%;aspect-ratio:1;
@@ -236,7 +236,7 @@ body.camera-focus-mode #qrScannerPanel{
   bottom:auto !important;
   width:min(94vw, 640px) !important;
   max-width:640px !important;
-  max-height:calc(100dvh - 24px) !important;
+  max-height:calc(100svh - 24px) !important;
   height:auto !important;
   margin:0 !important;
   transform:translate3d(-50%,-50%,0) !important;
@@ -257,19 +257,18 @@ body.camera-focus-mode::after{
   content:"";
   position:fixed;
   inset:0;
-  z-index:99980;
-  background:rgba(2,4,12,.72);
-  backdrop-filter:blur(7px);
-  -webkit-backdrop-filter:blur(7px);
+  z-index:100;
+  background:rgba(2,4,12,.64);
   pointer-events:none;
 }
 body.camera-focus-mode #qrScannerPanel{
   isolation:isolate;
+  z-index:2147483646 !important;
 }
 @media(max-width:700px){
   body.camera-focus-mode #qrScannerPanel{
     width:calc(100vw - 20px) !important;
-    max-height:calc(100dvh - 16px) !important;
+    max-height:calc(100svh - 16px) !important;
     border-radius:24px;
   }
   body.camera-focus-mode #qrScannerPanel .qr-stage{
@@ -278,7 +277,7 @@ body.camera-focus-mode #qrScannerPanel{
 }
 @media(max-height:720px){
   body.camera-focus-mode #qrScannerPanel{
-    max-height:calc(100dvh - 8px) !important;
+    max-height:calc(100svh - 8px) !important;
   }
   body.camera-focus-mode #qrScannerPanel .qr-stage{
     width:min(72vh, 100%);
@@ -295,6 +294,31 @@ body, main, header, footer, section, article, div{
 }
 input,textarea,select{
   touch-action:manipulation;
+}
+
+
+/* iPhone zoom lock: normal one-finger scroll/tap remains available. */
+html, body{
+  -webkit-text-size-adjust:100%;
+}
+body, #qrScannerPanel, .qr-stage{
+  -webkit-user-select:none;
+  user-select:none;
+}
+input, textarea{
+  -webkit-user-select:text;
+  user-select:text;
+}
+@supports (-webkit-touch-callout:none){
+  html{
+    touch-action:manipulation;
+  }
+  body{
+    touch-action:pan-y;
+  }
+  #qrScannerPanel, .qr-stage{
+    touch-action:none;
+  }
 }
 
 </style>
@@ -1186,6 +1210,23 @@ window.addEventListener('load',()=>{
     }
   }, {passive:false});
 })();
+
+
+function recenterCameraOnViewport(){
+  if(!document.body.classList.contains('camera-focus-mode')) return;
+  const panel=$('qrScannerPanel');
+  if(!panel) return;
+  panel.style.left='50%';
+  panel.style.top='50%';
+  panel.style.transform='translate3d(-50%,-50%,0)';
+}
+if(window.visualViewport){
+  let vvTimer=0;
+  window.visualViewport.addEventListener('resize',()=>{
+    clearTimeout(vvTimer);
+    vvTimer=setTimeout(recenterCameraOnViewport,120);
+  },{passive:true});
+}
 
 </script>
 </body>
