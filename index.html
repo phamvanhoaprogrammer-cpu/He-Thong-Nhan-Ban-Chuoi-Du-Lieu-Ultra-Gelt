@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<meta name="description" content="Ultra-Gen — hệ thống nhân bản và biến đổi nội dung hiệu năng cao.">
+<title>ULTRA-GEN • Enterprise Content Intelligence</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+
+<style>
+:root{
+  --bg:#060816; --panel:#0d1020; --panel2:#11162a; --line:#29304a;
+  --muted:#8791aa; --text:#f3f5fb; --primary:#7c5cff; --cyan:#22d3ee;
+  --pink:#f472b6; --gold:#fbbf24; --blue:#60a5fa;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; color:var(--text);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(124,92,255,.20), transparent 27%),
+    radial-gradient(circle at 92% 8%, rgba(34,211,238,.13), transparent 25%),
+    radial-gradient(circle at 50% 100%, rgba(244,114,182,.08), transparent 35%),
+    linear-gradient(180deg,#070816 0%,#090b18 48%,#05060d 100%);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  overscroll-behavior:none;
+  touch-action:manipulation;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:32px 32px;
+}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+textarea,input[type=number]{user-select:text;-webkit-user-select:text}
+.glass{
+  background:linear-gradient(145deg,rgba(20,23,43,.90),rgba(9,11,23,.90));
+  border:1px solid rgba(124,92,255,.20);
+  box-shadow:0 24px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035);
+  backdrop-filter:blur(22px);
+}
+.card{border-radius:22px}
+.input{
+  width:100%; color:#e5edf8; background:#060e19; border:1px solid #203047;
+  border-radius:14px; outline:none; transition:.2s;
+}
+.input:focus{border-color:rgba(54,211,153,.75);box-shadow:0 0 0 3px rgba(54,211,153,.08)}
+.mode{
+  border:1px solid #203047;background:rgba(5,14,25,.72);transition:.2s;
+}
+.mode:hover{border-color:#36506e;background:rgba(12,27,45,.9)}
+.mode:has(input:checked){border-color:rgba(54,211,153,.55);background:rgba(8,39,33,.5)}
+.btn{transition:transform .15s,filter .15s,background .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.48;cursor:not-allowed;transform:none;filter:none}
+.kpi{
+  border:1px solid rgba(74,96,126,.25);background:rgba(7,16,28,.62);
+  border-radius:16px;padding:14px 16px;
+}
+.progress-track{height:8px;background:#07101b;border:1px solid #203047;border-radius:999px;overflow:hidden}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:999px;transition:width .12s}
+.scan-panel{border:1px solid rgba(74,96,126,.28);background:rgba(5,14,25,.66);border-radius:18px;overflow:hidden}
+.scan-preview{width:100%;aspect-ratio:16/9;object-fit:contain;background:#02070d}
+.scan-drop{border:1px dashed #334861;background:rgba(10,22,37,.5);border-radius:14px;transition:.2s}
+.scan-drop:hover{border-color:rgba(54,211,153,.65);background:rgba(10,35,33,.45)}
+
+.status-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 14px #34d399}
+.toast{animation:toastIn .25s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(max-width:640px){
+  .hero-title{font-size:1.65rem!important}
+}
+
+/* Premium QR camera */
+.qr-stage{
+  position:relative;
+  width:min(100%,430px);
+  aspect-ratio:1/1;
+  margin:0 auto;
+  border-radius:28px;
+  overflow:hidden;
+  background:#02030a;
+  border:1px solid rgba(124,92,255,.42);
+  box-shadow:0 24px 70px rgba(0,0,0,.45),0 0 50px rgba(124,92,255,.10);
+}
+.qr-stage video{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transform:translateZ(0);
+}
+.qr-shade{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at center,transparent 0 31%,rgba(2,3,10,.58) 52%,rgba(2,3,10,.78) 100%);
+}
+.qr-frame{
+  position:absolute;left:50%;top:50%;width:68%;aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  border-radius:22px;
+  box-shadow:0 0 0 999px rgba(0,0,0,.08),0 0 28px rgba(34,211,238,.14);
+}
+.qr-corner{
+  position:absolute;width:42px;height:42px;border-color:#fff;border-style:solid;
+  filter:drop-shadow(0 0 8px rgba(34,211,238,.85));
+}
+.qr-corner.tl{left:0;top:0;border-width:4px 0 0 4px;border-radius:12px 0 0 0}
+.qr-corner.tr{right:0;top:0;border-width:4px 4px 0 0;border-radius:0 12px 0 0}
+.qr-corner.bl{left:0;bottom:0;border-width:0 0 4px 4px;border-radius:0 0 0 12px}
+.qr-corner.br{right:0;bottom:0;border-width:0 4px 4px 0;border-radius:0 0 12px 0}
+.qr-scanline{
+  position:absolute;left:8%;right:8%;top:15%;height:2px;
+  background:linear-gradient(90deg,transparent,#22d3ee,#7c5cff,transparent);
+  box-shadow:0 0 18px rgba(34,211,238,.95);
+  animation:scanline 2.2s ease-in-out infinite;
+}
+@keyframes scanline{0%,100%{top:15%;opacity:.45}50%{top:85%;opacity:1}}
+.capture-badge{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  white-space:nowrap;padding:8px 13px;border-radius:999px;
+  background:rgba(5,7,18,.78);border:1px solid rgba(255,255,255,.12);
+  color:#e9eaff;font-size:11px;font-weight:800;backdrop-filter:blur(14px);
+}
+@media(max-width:640px){
+  .qr-stage{width:min(100%,360px);border-radius:24px}
+  .qr-corner{width:36px;height:36px}
+}
+
+
+/* QR scanner performance + success overlay */
+#qrScannerPanel{
+  scroll-margin-top:18px;
+}
+.qr-stage{
+  contain:layout paint;
+  isolation:isolate;
+}
+.qr-stage.qr-success::after{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(circle at center,rgba(34,211,238,.24),rgba(124,92,255,.08) 35%,transparent 65%);
+  animation:qrSuccessFlash .55s ease-out both;
+  pointer-events:none;
+}
+@keyframes qrSuccessFlash{
+  0%{opacity:0;transform:scale(.88)}
+  35%{opacity:1}
+  100%{opacity:0;transform:scale(1.05)}
+}
+.qr-loading{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:72px;height:72px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(4,7,17,.86);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 30px rgba(34,211,238,.18);
+  backdrop-filter:blur(14px);
+  z-index:20;
+}
+.qr-loading-ring{
+  width:38px;height:38px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.18);
+  border-top-color:#22d3ee;
+  border-right-color:#7c5cff;
+  animation:qrSpin .72s linear infinite;
+}
+@keyframes qrSpin{to{transform:rotate(360deg)}}
+.qr-success-check{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:58px;height:58px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:#16a34a;color:#fff;
+  box-shadow:0 0 35px rgba(34,197,94,.42);
+  z-index:21;
+  animation:qrCheckIn .28s ease-out both;
+}
+@keyframes qrCheckIn{
+  from{opacity:0;transform:translate(-50%,-50%) scale(.55)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .qr-scanline,.qr-loading-ring{animation:none}
+}
+
+
+/* iPhone performance tuning */
+html,body{
+  -webkit-text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent;
+}
+button,input,textarea,select{
+  font:inherit;
+}
+button{
+  touch-action:manipulation;
+}
+.qr-stage, #qrScannerPanel{
+  transform:translateZ(0);
+  -webkit-transform:translateZ(0);
+  contain:layout paint style;
+}
+.qr-stage video{
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
+
+/* ================= CAMERA FOCUS MODE =================
+   When QR scanning starts, the entire scanner card becomes a
+   centered fixed workspace. The page behind it cannot scroll.
+*/
+body.camera-focus-mode{
+  overflow:hidden !important;
+  position:fixed;
+  width:100%;
+  left:0;
+  right:0;
+  touch-action:none;
+  overscroll-behavior:none;
+}
+body.camera-focus-mode #qrScannerPanel{
+  position:fixed !important;
+  z-index:99990;
+  left:50% !important;
+  top:50% !important;
+  right:auto !important;
+  bottom:auto !important;
+  width:min(94vw, 640px) !important;
+  max-width:640px !important;
+  max-height:calc(100dvh - 24px) !important;
+  height:auto !important;
+  margin:0 !important;
+  transform:translate3d(-50%,-50%,0) !important;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:0 30px 100px rgba(0,0,0,.72),0 0 80px rgba(124,92,255,.14);
+}
+body.camera-focus-mode #qrScannerPanel .qr-stage{
+  width:min(100%, 430px);
+  margin-left:auto;
+  margin-right:auto;
+}
+body.camera-focus-mode #qrScannerPanel > *{
+  flex-shrink:0;
+}
+body.camera-focus-mode::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:99980;
+  background:rgba(2,4,12,.72);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  pointer-events:none;
+}
+body.camera-focus-mode #qrScannerPanel{
+  isolation:isolate;
+}
+@media(max-width:700px){
+  body.camera-focus-mode #qrScannerPanel{
+    width:calc(100vw - 20px) !important;
+    max-height:calc(100dvh - 16px) !important;
+    border-radius:24px;
+  }
+  body.camera-focus-mode #qrScannerPanel .qr-stage{
+    width:min(100%, 390px);
+  }
+}
+@media(max-height:720px){
+  body.camera-focus-mode #qrScannerPanel{
+    max-height:calc(100dvh - 8px) !important;
+  }
+  body.camera-focus-mode #qrScannerPanel .qr-stage{
+    width:min(72vh, 100%);
+  }
+}
+
+/* Strong mobile anti-zoom rules */
+html{
+  touch-action:manipulation;
+  -ms-touch-action:manipulation;
+}
+body, main, header, footer, section, article, div{
+  -webkit-tap-highlight-color:transparent;
+}
+input,textarea,select{
+  touch-action:manipulation;
+}
+
+</style>
+</head>
+
+<body>
+<div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+
+  <!-- HEADER -->
+  <header class="glass card px-5 py-5 sm:px-7 sm:py-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 text-[11px] uppercase tracking-[.22em] text-emerald-400 font-bold mb-2">
+          <span class="status-dot"></span> System Operational
+          <span class="text-slate-600">•</span>
+          Enterprise Edition
+        </div>
+        <h1 class="hero-title text-3xl sm:text-4xl font-black tracking-tight">
+          <span class="bg-gradient-to-r from-violet-300 via-cyan-300 to-fuchsia-400 bg-clip-text text-transparent">ULTRA-GEN</span>
+          <span class="text-slate-100"> Content Engine</span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-2 max-w-2xl">
+          Nhân bản, biến đổi và xuất dữ liệu quy mô lớn với giao diện vận hành rõ ràng,
+          kiểm soát trạng thái và xử lý theo lô để hạn chế treo trình duyệt.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-2">
+        <div class="kpi"><div class="text-[10px] uppercase tracking-wider text-slate-500">Engine</div><div class="text-sm font-bold text-emerald-300 mt-1">Local</div></div>
+        <div class="kpi"><div class="text-[10px] uppercase tracking-wider text-slate-500">Mode</div><div class="text-sm font-bold text-blue-300 mt-1">Batch</div></div>
+        <div class="kpi"><div class="text-[10px] uppercase tracking-wider text-slate-500">Preview</div><div class="text-sm font-bold text-slate-200 mt-1">1,000</div></div>
+        <div class="kpi"><div class="text-[10px] uppercase tracking-wider text-slate-500">Version</div><div class="text-sm font-bold text-slate-200 mt-1">2.0</div></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden fixed top-5 right-5 z-[100] max-w-sm px-4 py-3 rounded-2xl border shadow-2xl toast">
+    <div class="flex items-start gap-3">
+      <i id="toast-icon" class="w-5 h-5 mt-0.5"></i>
+      <div><div id="toast-title" class="font-bold text-sm"></div><div id="toast-message" class="text-xs opacity-80 mt-0.5"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+    <!-- CONFIG -->
+    <section class="xl:col-span-5 glass card p-5 sm:p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="text-[10px] uppercase tracking-[.2em] text-slate-500 font-bold">01 / Input</div>
+          <h2 class="text-xl font-bold mt-1 flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-5 h-5 text-emerald-400"></i> Cấu hình tác vụ</h2>
+        </div>
+        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300">READY</span>
+      </div>
+
+      <label class="block text-xs font-bold text-slate-400 mb-2">NỘI DUNG ĐẦU VÀO</label>
+      <div class="relative">
+        <textarea id="inputText" rows="7" class="input p-4 pr-24 resize-none text-sm leading-6"
+          placeholder="Nhập nội dung cần nhân bản..."></textarea>
+        <button id="pasteBtn" onclick="pasteText()" class="btn absolute top-3 right-3 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200">
+          <i data-lucide="clipboard-paste" class="w-3.5 h-3.5 inline mr-1"></i>Dán
+        </button>
+      </div>
+      <div class="flex justify-between text-[10px] text-slate-500 mt-2">
+        <span id="inputMeta">0 ký tự</span><span>UTF-8 • Local processing</span>
+      </div>
+
+      <div class="mt-5">
+        <label class="block text-xs font-bold text-slate-400 mb-2">SỐ LƯỢNG BẢN GHI</label>
+        <input id="inputQuantity" type="number" min="1" max="1000000" value="1000" class="input px-4 py-3 text-sm">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-2">
+          <span>1 → 1,000,000</span><span id="memoryHint">Ước tính bộ nhớ: —</span>
+        </div>
+      </div>
+
+      <!-- SMART CAPTURE -->
+      <div class="mt-5 scan-panel">
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase tracking-[.2em] text-slate-500 font-bold">Smart Capture</div>
+            <div class="font-bold text-sm mt-1 flex items-center gap-2">
+              <i data-lucide="scan-line" class="w-4 h-4 text-cyan-400"></i>
+              QR / OCR tự động
+            </div>
+          </div>
+          <span id="captureStatus" class="text-[10px] text-slate-500">Sẵn sàng</span>
+        </div>
+
+        <div class="p-4 space-y-3">
+          <div class="grid grid-cols-2 gap-2.5">
+            <button id="startQrBtn" onclick="startQrScanner()" class="btn rounded-xl py-2.5 bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-xs font-bold">
+              <i data-lucide="scan-qr-code" class="w-4 h-4 inline mr-1"></i>Quét mã QR
+            </button>
+            <button id="uploadImageBtn" onclick="document.getElementById('imageInput').click()" class="btn rounded-xl py-2.5 bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs font-bold">
+              <i data-lucide="image-up" class="w-4 h-4 inline mr-1"></i>Tải ảnh OCR
+            </button>
+          </div>
+
+          <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/jpg,image/bmp" class="hidden" onchange="handleImageUpload(event)">
+
+          <div id="qrScannerPanel" class="hidden space-y-2">
+            <div class="qr-stage">
+              <video id="qrVideo" autoplay muted playsinline></video>
+              <div class="qr-shade"></div>
+              <div class="qr-frame">
+                <span class="qr-corner tl"></span><span class="qr-corner tr"></span>
+                <span class="qr-corner bl"></span><span class="qr-corner br"></span>
+                <span class="qr-scanline"></span>
+              </div>
+              <div class="capture-badge"><i data-lucide="scan-line" class="w-3.5 h-3.5 inline mr-1 text-cyan-300"></i>Đưa mã QR vào 4 góc khung</div>
+            </div>
+            <canvas id="qrCanvas" class="hidden"></canvas>
+            <div class="flex gap-2">
+              <button onclick="stopQrScanner()" class="btn flex-1 rounded-xl py-2 bg-slate-800 border border-slate-700 text-xs font-bold">
+                <i data-lucide="square" class="w-3.5 h-3.5 inline mr-1"></i>Dừng camera
+              </button>
+              <button onclick="captureQrFromCamera()" class="btn flex-1 rounded-xl py-2 bg-orange-500 text-white text-xs font-bold">
+                <i data-lucide="scan" class="w-3.5 h-3.5 inline mr-1"></i>Quét ngay
+              </button>
+            </div>
+          </div>
+
+          <div id="ocrProgressPanel" class="hidden">
+            <div class="flex justify-between text-[10px] text-slate-400 mb-2">
+              <span id="ocrProgressLabel">Đang phân tích ảnh...</span><span id="ocrProgress">0%</span>
+            </div>
+            <div class="progress-track"><div id="ocrProgressBar" class="progress-bar"></div></div>
+          </div>
+
+          <div class="flex items-center gap-2 text-[10px] text-slate-500">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+            QR được đọc trực tiếp trên trình duyệt; OCR dùng Tesseract.js.
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-bold text-slate-400">CHẾ ĐỘ BIẾN ĐỔI</label>
+          <button onclick="clearModes()" class="text-[10px] text-slate-500 hover:text-slate-300">Bỏ chọn</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <label class="mode rounded-xl p-3 flex gap-3 items-start cursor-pointer">
+            <input id="mode_uppercase_accent" type="checkbox" class="mt-1 accent-emerald-500">
+            <span><b class="text-xs">IN HOA CÓ DẤU</b><small class="block text-[10px] text-slate-500 mt-1">Giữ nguyên dấu tiếng Việt</small></span>
+          </label>
+          <label class="mode rounded-xl p-3 flex gap-3 items-start cursor-pointer">
+            <input id="mode_uppercase_no_accent" type="checkbox" class="mt-1 accent-emerald-500">
+            <span><b class="text-xs">IN HOA KHÔNG DẤU</b><small class="block text-[10px] text-slate-500 mt-1">Chuẩn hoá và viết hoa</small></span>
+          </label>
+          <label class="mode rounded-xl p-3 flex gap-3 items-start cursor-pointer">
+            <input id="mode_random_num" type="checkbox" class="mt-1 accent-emerald-500">
+            <span><b class="text-xs">SỐ NGẪU NHIÊN</b><small class="block text-[10px] text-slate-500 mt-1">Giữ độ dài số gốc</small></span>
+          </label>
+          <label class="mode rounded-xl p-3 flex gap-3 items-start cursor-pointer">
+            <input id="mode_random_alphanumeric" type="checkbox" class="mt-1 accent-emerald-500">
+            <span><b class="text-xs">MÃ ALPHANUMERIC</b><small class="block text-[10px] text-slate-500 mt-1">Sinh hậu tố 8 ký tự</small></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 mt-6">
+        <button id="btnGenerate" onclick="generateData()" class="btn rounded-xl py-3 bg-orange-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-500/10">
+          <i data-lucide="play" class="w-4 h-4 inline mr-1"></i>Tạo dữ liệu
+        </button>
+        <button onclick="selectAllText()" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs sm:text-sm">
+          <i data-lucide="list-checks" class="w-4 h-4 inline mr-1"></i>Chọn
+        </button>
+        <button onclick="clearAll()" class="btn rounded-xl py-3 bg-rose-500/10 border border-rose-500/25 text-rose-300 font-bold text-xs sm:text-sm">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 inline mr-1"></i>Reset
+        </button>
+      </div>
+    </section>
+
+    <!-- OUTPUT -->
+    <section class="xl:col-span-7 glass card p-5 sm:p-6 flex flex-col min-h-[620px]">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <div class="text-[10px] uppercase tracking-[.2em] text-slate-500 font-bold">02 / Output</div>
+          <h2 class="text-xl font-bold mt-1 flex items-center gap-2"><i data-lucide="database-zap" class="w-5 h-5 text-blue-400"></i> Trung tâm kết quả</h2>
+        </div>
+        <button onclick="copyResult()" class="btn px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold">
+          <i data-lucide="copy" class="w-4 h-4 inline mr-1.5"></i>Sao chép
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 mb-4">
+        <div class="kpi"><div class="text-[10px] text-slate-500 uppercase">Đã xử lý</div><div id="statProcessed" class="text-lg font-black mt-1">0</div></div>
+        <div class="kpi"><div class="text-[10px] text-slate-500 uppercase">Mục tiêu</div><div id="statTarget" class="text-lg font-black mt-1">0</div></div>
+        <div class="kpi"><div class="text-[10px] text-slate-500 uppercase">Trạng thái</div><div id="statStatus" class="text-lg font-black mt-1 text-slate-400">Idle</div></div>
+      </div>
+
+      <div id="progressContainer" class="hidden mb-4">
+        <div class="flex justify-between text-[10px] text-slate-400 mb-2"><span>Tiến trình tác vụ</span><span id="progressText">0%</span></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      </div>
+
+      <textarea id="outputArea" readonly rows="16" class="input p-4 resize-none font-mono text-xs sm:text-sm leading-6 flex-1"
+        placeholder="Kết quả xem trước sẽ hiển thị tại đây..."></textarea>
+
+      <div id="previewNotice" class="hidden mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-300">
+        <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+        Chỉ hiển thị 1.000 dòng xem trước để giữ giao diện nhẹ. Bộ nhớ kết quả nội bộ vẫn chứa toàn bộ dữ liệu.
+      </div>
+
+      <div class="border-t border-slate-800 mt-5 pt-5">
+        <div class="flex items-center justify-between mb-3">
+          <div><div class="text-[10px] uppercase tracking-[.2em] text-slate-500 font-bold">03 / Export</div><h3 class="font-bold mt-1">Xuất dữ liệu</h3></div>
+          <span class="text-[10px] text-slate-500">TXT • XLSX • PDF</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2.5">
+          <button onclick="exportFile('txt')" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-xs font-bold"><i data-lucide="file-text" class="w-4 h-4 inline mr-1 text-blue-400"></i>TXT</button>
+          <button onclick="exportFile('xlsx')" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-xs font-bold"><i data-lucide="file-spreadsheet" class="w-4 h-4 inline mr-1 text-emerald-400"></i>XLSX</button>
+          <button onclick="exportFile('pdf')" class="btn rounded-xl py-3 bg-slate-800 border border-slate-700 text-xs font-bold"><i data-lucide="file-down" class="w-4 h-4 inline mr-1 text-rose-400"></i>PDF</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-8">
+    <div class="glass card overflow-hidden">
+      <div class="h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent"></div>
+      <div class="p-5 sm:p-7">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+          <div>
+            <div class="flex items-center gap-2 text-emerald-400 text-[10px] uppercase tracking-[.22em] font-black">
+              <i data-lucide="code-2" class="w-4 h-4"></i> Product & Engineering
+            </div>
+            <div class="text-xl font-black mt-2 bg-gradient-to-r from-emerald-300 to-blue-400 bg-clip-text text-transparent">Phạm Văn Hoà Programmer 🇻🇳</div>
+            <p class="text-xs text-slate-500 mt-1">Thiết kế hệ thống • UI/UX • JavaScript • Automation</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <a href="https://zalo.me/0869719516" target="_blank" rel="noopener noreferrer" class="btn rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-3 text-xs font-semibold flex items-center gap-2">
+              <span class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-300"><i data-lucide="phone" class="w-4 h-4"></i></span>
+              <span><small class="block text-slate-500">Phone / Zalo</small>0869 719 516</span>
+            </a>
+            <a href="mailto:phamvanhoaprogrammer@gmail.com" class="btn rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-3 text-xs font-semibold flex items-center gap-2">
+              <span class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-300"><i data-lucide="mail" class="w-4 h-4"></i></span>
+              <span class="min-w-0"><small class="block text-slate-500">Email</small><span class="truncate block">phamvanhoaprogrammer@gmail.com</span></span>
+            </a>
+          </div>
+
+          <div class="md:text-right">
+            <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-[10px] font-bold text-emerald-300">
+              <span class="status-dot"></span> LOCAL ENGINE ONLINE
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">Dữ liệu được xử lý trên trình duyệt của bạn.</p>
+          </div>
+        </div>
+        <div class="border-t border-slate-800 mt-6 pt-4 flex flex-col sm:flex-row justify-between gap-2 text-[10px] text-slate-600">
+          <span>© 2026 Phạm Văn Hoà Programmer. All rights reserved.</span>
+          <span>ULTRA-GEN Enterprise Content Engine v2.0</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+lucide.createIcons();
+
+const state = {
+  results: [],
+  processing: false,
+  cancelled: false,
+  startedAt: 0
+};
+const $ = id => document.getElementById(id);
+
+function showToast(message, type='success', title=null){
+  const toast=$('toast'), icon=$('toast-icon');
+  const success=type==='success';
+  toast.className=`fixed top-5 right-5 z-[100] max-w-sm px-4 py-3 rounded-2xl border shadow-2xl toast ${
+    success ? 'bg-emerald-950/95 border-emerald-700 text-emerald-100' : 'bg-rose-950/95 border-rose-700 text-rose-100'
+  }`;
+  icon.setAttribute('data-lucide', success ? 'check-circle-2' : 'alert-circle');
+  $('toast-title').textContent=title || (success ? 'Thành công' : 'Cần kiểm tra');
+  $('toast-message').textContent=message;
+  lucide.createIcons();
+  clearTimeout(showToast.timer);
+  showToast.timer=setTimeout(()=>toast.classList.add('hidden'),3200);
+}
+function removeAccents(str){
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D');
+}
+function randomNumber(length=6){
+  if(length<=0) return '';
+  const arr=new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  return Array.from(arr,n=>String(n%10)).join('');
+}
+function randomAlphaNumeric(length=8){
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const arr=new Uint32Array(length); crypto.getRandomValues(arr);
+  return Array.from(arr,n=>chars[n%chars.length]).join('');
+}
+function updateInputMeta(){
+  const text=$('inputText').value;
+  $('inputMeta').textContent=`${text.length.toLocaleString()} ký tự`;
+  updateMemoryHint();
+}
+function updateMemoryHint(){
+  const q=Math.max(0,Number($('inputQuantity').value)||0);
+  const len=$('inputText').value.length;
+  const mb=(q*(len+40))/1024/1024;
+  $('memoryHint').textContent=q ? `Ước tính bộ nhớ: ${mb<1024?mb.toFixed(1)+' MB':(mb/1024).toFixed(2)+' GB'}` : 'Ước tính bộ nhớ: —';
+}
+$('inputText').addEventListener('input',updateInputMeta);
+$('inputQuantity').addEventListener('input',updateMemoryHint);
+
+async function pasteText(){
+  try{
+    const text=await navigator.clipboard.readText();
+    if(!text.trim()) return showToast('Clipboard không có dữ liệu để dán.','error');
+    $('inputText').value=text; updateInputMeta();
+    showToast('Đã dán dữ liệu từ clipboard.');
+  }catch{
+    showToast('Trình duyệt chưa cấp quyền đọc clipboard.','error');
+  }
+}
+function selectAllText(){
+  if(!requireInput('chọn tất cả')) return;
+  $('inputText').focus({preventScroll:true});
+  $('inputText').select();
+  showToast('Đã chọn toàn bộ nội dung.');
+}
+function clearModes(){
+  document.querySelectorAll('.mode input').forEach(x=>x.checked=false);
+  showToast('Đã bỏ chọn các chế độ biến đổi.');
+}
+function clearAll(){
+  if(!requireInput('reset')) return;
+  if(state.processing) return showToast('Tác vụ đang chạy, hãy chờ hoàn tất trước khi reset.','error');
+  $('inputText').value=''; $('outputArea').value=''; $('inputQuantity').value=1000;
+  state.results=[]; updateInputMeta(); setStats(0,0,'Idle');
+  $('progressContainer').classList.add('hidden'); $('previewNotice').classList.add('hidden');
+  showToast('Đã reset toàn bộ phiên làm việc.');
+}
+function setStats(processed,target,status){
+  $('statProcessed').textContent=processed.toLocaleString();
+  $('statTarget').textContent=target.toLocaleString();
+  $('statStatus').textContent=status;
+}
+function setBusy(busy){
+  state.processing=busy;
+  const btn=$('btnGenerate');
+  btn.disabled=busy;
+  btn.innerHTML=busy
+    ? '<i data-lucide="loader-circle" class="w-4 h-4 inline mr-1 animate-spin"></i>Đang xử lý'
+    : '<i data-lucide="play" class="w-4 h-4 inline mr-1"></i>Tạo dữ liệu';
+  lucide.createIcons();
+}
+function transformItem(input, opts){
+  let item=input;
+  if(opts.upperNoAccent) item=removeAccents(item).toUpperCase();
+  else if(opts.upperAccent) item=item.toUpperCase();
+  if(opts.randomNum){
+    item=item.replace(/\d+/g,m=>randomNumber(m.length));
+    if(!/\d/.test(input)) item+=' '+randomNumber(6);
+  }
+  if(opts.randomAlpha) item+='_'+randomAlphaNumeric(8);
+  return item;
+}
+
+let qrStream = null;
+let qrScanTimer = null;
+
+function setCaptureStatus(text, ok=false){
+  const el=$('captureStatus');
+  el.textContent=text;
+  el.className=`text-[10px] ${ok?'text-emerald-300':'text-slate-500'}`;
+}
+
+function successHaptic(){
+  // Android/Chrome: native Vibration API.
+  try{
+    if(typeof navigator.vibrate==='function'){
+      navigator.vibrate([22,18,22]);
+      return true;
+    }
+  }catch(_){}
+
+  // iPhone Safari does not expose navigator.vibrate. There is no reliable
+  // pure-web API that can trigger the system haptic motor like a banking app.
+  // We therefore keep this hook ready for a native/PWA bridge without
+  // blocking the scan flow.
+  try{
+    if(window.webkit?.messageHandlers?.haptic){
+      window.webkit.messageHandlers.haptic.postMessage('success');
+      return true;
+    }
+  }catch(_){}
+  return false;
+}
+
+function putCapturedText(text, source='capture'){
+  const clean=(text||'').trim();
+  if(!clean) return showToast('Không phát hiện được văn bản.','error');
+  $('inputText').value=clean;
+  updateInputMeta();
+  $('inputText').focus();
+  showToast(source==='qr' ? 'Đã đọc nội dung QR và đưa vào ô nhập.' : 'Đã nhận diện văn bản từ ảnh và đưa vào ô nhập.');
+}
+
+
+function scrollToInputCenter(){
+  const el=$('inputText');
+  if(!el) return;
+  const rect=el.getBoundingClientRect();
+  const targetY=window.scrollY + rect.top - (window.innerHeight/2) + (rect.height/2);
+  window.scrollTo({top:Math.max(0,targetY),behavior:'smooth'});
+}
+
+function scrollToScannerCenter(){
+  const el=$('qrScannerPanel');
+  if(!el) return;
+  // Account for iOS Safari dynamic toolbar/status area.
+  const rect=el.getBoundingClientRect();
+  const targetY=window.scrollY + rect.top - (window.innerHeight/2) + (rect.height/2);
+  window.scrollTo({top:Math.max(0,targetY),behavior:'smooth'});
+}
+
+
+let cameraScrollY=0;
+
+function enterCameraFocusMode(){
+  cameraScrollY=window.scrollY || window.pageYOffset || 0;
+  document.body.classList.add('camera-focus-mode');
+  document.documentElement.classList.add('camera-focus-mode');
+
+  // Force a layout pass, then correct for iOS dynamic viewport.
+  requestAnimationFrame(()=>{
+    const panel=$('qrScannerPanel');
+    if(!panel) return;
+    panel.style.top='50%';
+    panel.style.left='50%';
+    panel.style.transform='translate3d(-50%,-50%,0)';
+  });
+}
+
+function exitCameraFocusMode(){
+  document.body.classList.remove('camera-focus-mode');
+  document.documentElement.classList.remove('camera-focus-mode');
+  const panel=$('qrScannerPanel');
+  if(panel){
+    panel.style.top='';
+    panel.style.left='';
+    panel.style.transform='';
+  }
+  window.scrollTo(0,cameraScrollY);
+}
+
+async function startQrScanner(){
+  if(!window.isSecureContext && location.hostname!=='localhost'){
+    return showToast('Camera cần HTTPS hoặc localhost để hoạt động.','error');
+  }
+  if(!window.jsQR) return showToast('Thư viện QR chưa tải xong. Hãy thử lại.','error');
+  if(!navigator.mediaDevices?.getUserMedia){
+    return showToast('Trình duyệt không hỗ trợ camera.','error');
+  }
+
+  try{
+    // Stop previous stream first, but do not leave the page in focus mode.
+    if(qrStream) stopQrScanner();
+
+    const panel=$('qrScannerPanel');
+    panel.classList.remove('hidden');
+
+    // Lock the whole scanner card to the exact center of the visible viewport.
+    enterCameraFocusMode();
+
+    qrStream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1280,max:1920},
+        height:{ideal:720,max:1080}
+      },
+      audio:false
+    });
+
+    const video=$('qrVideo');
+    video.srcObject=qrStream;
+    await video.play();
+
+    const track=qrStream.getVideoTracks()[0];
+    try{
+      const caps=track.getCapabilities?.();
+      if(caps?.focusMode?.includes('continuous')){
+        await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+      }
+    }catch(_){}
+
+    // Re-center once after video metadata/layout settles on iOS Safari.
+    requestAnimationFrame(()=>{
+      const panel=$('qrScannerPanel');
+      if(panel){
+        panel.style.top='50%';
+        panel.style.left='50%';
+        panel.style.transform='translate3d(-50%,-50%,0)';
+      }
+    });
+
+    setCaptureStatus('Camera đang hoạt động');
+    showToast('Đưa mã QR vào giữa khung hình.');
+    lastQrScan=0;
+    qrScanTimer=requestAnimationFrame(scanQrFrame);
+  }catch(err){
+    console.error(err);
+    stopQrScanner();
+    showToast('Không thể mở camera. Hãy cấp quyền camera cho trình duyệt.','error');
+    setCaptureStatus('Camera bị từ chối');
+  }
+}
+
+let lastQrScan=0;
+function scanQrFrame(ts=0){
+  if(!qrStream) return;
+
+  // ~6 scans/sec: far lighter than scanning every animation frame.
+  if(ts-lastQrScan<165){
+    qrScanTimer=requestAnimationFrame(scanQrFrame);
+    return;
+  }
+  lastQrScan=ts;
+
+  const video=$('qrVideo'), canvas=$('qrCanvas');
+  if(video.readyState>=2 && video.videoWidth){
+    const maxSide=720;
+    const scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));
+    canvas.width=Math.max(1,Math.round(video.videoWidth*scale));
+    canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+
+    const code=jsQR(image.data,image.width,image.height,{
+      inversionAttempts:'attemptBoth'
+    });
+
+    if(code?.data){
+      handleQrSuccess(code.data);
+      return;
+    }
+  }
+  qrScanTimer=requestAnimationFrame(scanQrFrame);
+}
+
+async function handleQrSuccess(text){
+  if(!text || !qrStream) return;
+
+  // Stop CPU-heavy scanning immediately.
+  if(qrScanTimer) cancelAnimationFrame(qrScanTimer);
+  qrScanTimer=null;
+
+  successHaptic();
+
+  const stage=document.querySelector('.qr-stage');
+  if(stage) stage.classList.add('qr-success');
+
+  // Loading spinner in the center, like a native scanner transition.
+  const loading=document.createElement('div');
+  loading.className='qr-loading';
+  loading.innerHTML='<span class="qr-loading-ring"></span>';
+  stage?.appendChild(loading);
+
+  setCaptureStatus('Đã quét • đang xử lý',true);
+
+  // Give the user a visible success transition before moving focus.
+  await new Promise(r=>setTimeout(r,420));
+
+  loading.remove();
+  const check=document.createElement('div');
+  check.className='qr-success-check';
+  check.innerHTML='<i data-lucide="check" class="w-7 h-7"></i>';
+  stage?.appendChild(check);
+  if(window.lucide) lucide.createIcons();
+
+  putCapturedText(text,'qr');
+  stopQrScanner();
+
+  // Jump directly to the text input and focus it.
+  const input=$('inputText');
+  requestAnimationFrame(()=>{
+    input?.scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(()=>input?.focus({preventScroll:true}),260);
+  });
+
+  setTimeout(()=>check.remove(),650);
+  setTimeout(()=>stage?.classList.remove('qr-success'),700);
+}
+
+function captureQrFromCamera(){
+  if(!qrStream) return startQrScanner();
+  scanQrFrame();
+}
+
+function stopQrScanner(){
+  if(qrScanTimer) cancelAnimationFrame(qrScanTimer);
+  qrScanTimer=null;
+  if(qrStream){
+    qrStream.getTracks().forEach(track=>track.stop());
+    qrStream=null;
+  }
+  const video=$('qrVideo');
+  if(video) video.srcObject=null;
+  const panel=$('qrScannerPanel');
+  if(panel) panel.classList.add('hidden');
+  setCaptureStatus('Sẵn sàng');
+  exitCameraFocusMode();
+}
+
+async function handleImageUpload(event){
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file) return;
+  if(!file.type.startsWith('image/')) return showToast('Chỉ hỗ trợ file hình ảnh.','error');
+  if(file.size>15*1024*1024) return showToast('Ảnh quá lớn. Vui lòng chọn ảnh dưới 15 MB.','error');
+
+  setCaptureStatus('Đang phân tích ảnh...');
+  $('ocrProgressPanel').classList.remove('hidden');
+  $('ocrProgressBar').style.width='0%';
+  $('ocrProgress').textContent='0%';
+  $('ocrProgressLabel').textContent='Đang kiểm tra QR...';
+
+  try{
+    // Ưu tiên QR trước vì kết quả thường chính xác tuyệt đối hơn OCR.
+    const qrText=await detectQrFromImage(file);
+    if(qrText){
+      successHaptic();
+      const input=$('inputText');
+      putCapturedText(qrText,'qr');
+      requestAnimationFrame(()=>{
+        input?.scrollIntoView({behavior:'smooth',block:'center'});
+        setTimeout(()=>input?.focus({preventScroll:true}),220);
+      });
+      $('ocrProgressLabel').textContent='Đã phát hiện QR';
+      $('ocrProgressBar').style.width='100%';
+      $('ocrProgress').textContent='100%';
+      setCaptureStatus('QR đã nhận diện',true);
+      setTimeout(()=>$('ocrProgressPanel').classList.add('hidden'),800);
+      return;
+    }
+
+    if(!window.Tesseract) throw new Error('Tesseract chưa tải được từ CDN. Kiểm tra Internet rồi tải lại trang.');
+    $('ocrProgressLabel').textContent='OCR đang nhận diện văn bản...';
+
+    const result=await Tesseract.recognize(file,'vie+eng',{
+      logger:m=>{
+        if(typeof m.progress==='number'){
+          const p=Math.round(m.progress*100);
+          $('ocrProgressBar').style.width=p+'%';
+          $('ocrProgress').textContent=p+'%';
+          if(m.status) $('ocrProgressLabel').textContent=m.status;
+        }
+      }
+    });
+
+    const text=(result.data?.text||'').trim();
+    if(!text) throw new Error('Không tìm thấy văn bản');
+    successHaptic();
+    putCapturedText(text,'ocr');
+    setCaptureStatus('OCR hoàn tất',true);
+    showToast('Đã tự động điền văn bản nhận diện vào ô nhập.');
+  }catch(err){
+    console.error(err);
+    showToast('Không nhận diện được văn bản. Hãy dùng ảnh rõ hơn, đủ sáng và ít nghiêng.','error');
+    setCaptureStatus('Không nhận diện được');
+  }finally{
+    setTimeout(()=>$('ocrProgressPanel').classList.add('hidden'),1200);
+  }
+}
+
+async function detectQrFromImage(file){
+  return new Promise(resolve=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+
+    const finish=value=>{
+      URL.revokeObjectURL(url);
+      resolve(value||null);
+    };
+
+    img.onload=()=>{
+      try{
+        const max=1280;
+        const scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+        const w=Math.max(1,Math.round(img.naturalWidth*scale));
+        const h=Math.max(1,Math.round(img.naturalHeight*scale));
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+
+        // Pass 1: original image.
+        ctx.drawImage(img,0,0,w,h);
+        let data=ctx.getImageData(0,0,w,h);
+        let code=window.jsQR?.(data.data,w,h,{inversionAttempts:'attemptBoth'});
+        if(code?.data) return finish(code.data);
+
+        // Pass 2: grayscale + stronger contrast.
+        const pixels=data.data;
+        for(let i=0;i<pixels.length;i+=4){
+          const gray=(0.299*pixels[i]+0.587*pixels[i+1]+0.114*pixels[i+2]);
+          const v=gray>128?255:0;
+          pixels[i]=pixels[i+1]=pixels[i+2]=v;
+        }
+        ctx.putImageData(data,0,0);
+        data=ctx.getImageData(0,0,w,h);
+        code=window.jsQR?.(data.data,w,h,{inversionAttempts:'attemptBoth'});
+        if(code?.data) return finish(code.data);
+
+        finish(null);
+      }catch(e){
+        console.error('QR image scan error:',e);
+        finish(null);
+      }
+    };
+    img.onerror=()=>finish(null);
+    img.src=url;
+  });
+}
+
+window.addEventListener('beforeunload',stopQrScanner);
+
+async 
+function requireInput(actionLabel='thao tác'){
+  const input=$('inputText');
+  const value=(input?.value||'').trim();
+
+  if(!value){
+    showToast(`Vui lòng nhập hoặc quét nội dung trước khi ${actionLabel}.`,'error');
+
+    // Highlight input and center it on screen.
+    if(input){
+      input.classList.add('ring-2','ring-red-400/70','border-red-400/70');
+      scrollToInputCenter();
+      setTimeout(()=>{
+        input.focus({preventScroll:true});
+      },420);
+      setTimeout(()=>{
+        input.classList.remove('ring-2','ring-red-400/70','border-red-400/70');
+      },1800);
+    }
+    return false;
+  }
+  return true;
+}
+
+function generateData(){
+  if(!requireInput('tạo dữ liệu')) return;
+  if(state.processing) return;
+  const input=$('inputText').value;
+  const qty=Number($('inputQuantity').value);
+  if(!input.trim()) return showToast('Vui lòng nhập nội dung đầu vào.','error');
+  if(!Number.isInteger(qty)||qty<1||qty>1000000) return showToast('Số lượng phải là số nguyên từ 1 đến 1.000.000.','error');
+
+  const opts={
+    upperAccent:$('mode_uppercase_accent').checked,
+    upperNoAccent:$('mode_uppercase_no_accent').checked,
+    randomNum:$('mode_random_num').checked,
+    randomAlpha:$('mode_random_alphanumeric').checked
+  };
+  state.results=[]; state.startedAt=performance.now(); state.cancelled=false;
+  setBusy(true); setStats(0,qty,'Processing'); $('progressContainer').classList.remove('hidden');
+  $('previewNotice').classList.add('hidden'); $('outputArea').value='';
+
+  const chunkSize=2000;
+  let processed=0;
+  const tick=()=>{
+    const end=Math.min(processed+chunkSize,qty);
+    for(let i=processed;i<end;i++) state.results.push(transformItem(input,opts));
+    processed=end;
+    const pct=Math.floor(processed/qty*100);
+    $('progressBar').style.width=pct+'%';
+    $('progressText').textContent=`${pct}% • ${processed.toLocaleString()} / ${qty.toLocaleString()}`;
+    setStats(processed,qty,'Processing');
+    if(processed<qty) setTimeout(tick,0);
+    else finishGeneration(qty);
+  };
+  tick();
+}
+function finishGeneration(qty){
+  state.processing=false; setBusy(false); setStats(qty,qty,'Completed');
+  $('outputArea').value=state.results.slice(0,1000).join('\n');
+  if(qty>1000){$('previewNotice').classList.remove('hidden');lucide.createIcons();}
+  showToast(`Đã tạo ${qty.toLocaleString()} bản ghi trong ${((performance.now()-state.startedAt)/1000).toFixed(2)} giây.`);
+}
+async function copyResult(){
+  if(!state.results.length) return showToast('Chưa có dữ liệu để sao chép.','error');
+  try{
+    await navigator.clipboard.writeText(state.results.join('\n'));
+    showToast(`Đã sao chép ${state.results.length.toLocaleString()} dòng.`);
+  }catch{ showToast('Không thể sao chép toàn bộ dữ liệu; clipboard có thể bị giới hạn.','error');}
+}
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportFile(format){
+  if(!state.results.length) return showToast('Chưa có dữ liệu để xuất file.','error');
+  const n=state.results.length;
+  try{
+    if(format==='txt'){
+      downloadBlob(new Blob([state.results.join('\n')],{type:'text/plain;charset=utf-8'}),`ultra-gen-${n}-dong.txt`);
+    }else if(format==='xlsx'){
+      const data=state.results.map((line,i)=>({STT:i+1,'Nội dung':line}));
+      const ws=XLSX.utils.json_to_sheet(data), wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'KetQua'); XLSX.writeFile(wb,`ultra-gen-${n}-dong.xlsx`);
+    }else if(format==='pdf'){
+      const {jsPDF}=window.jspdf; const doc=new jsPDF();
+      doc.setFontSize(10); doc.text(`ULTRA-GEN - KET QUA (${n.toLocaleString()} DONG)`,10,12);
+      let y=20; const limit=Math.min(n,5000);
+      for(let i=0;i<limit;i++){
+        const line=`${i+1}. ${removeAccents(state.results[i])}`.slice(0,115);
+        if(y>280){doc.addPage();y=15} doc.text(line,10,y);y+=6;
+      }
+      doc.save(`ultra-gen-${limit}-dong.pdf`);
+      if(n>limit) showToast(`PDF giới hạn ${limit.toLocaleString()} dòng để tránh file quá nặng.`,'success','PDF đã xuất');
+    }
+    showToast(`Đã khởi tạo file ${format.toUpperCase()} cho ${n.toLocaleString()} dòng.`);
+  }catch(err){showToast('Xuất file thất bại. Hãy giảm số lượng dữ liệu và thử lại.','error');}
+}
+updateInputMeta();
+
+if(!navigator.mediaDevices?.getUserMedia){
+  $('startQrBtn').disabled=true;
+  $('startQrBtn').title='Thiết bị/trình duyệt không hỗ trợ camera';
+}
+
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    if(!window.jsQR) setCaptureStatus('QR library chưa tải');
+    if(!window.Tesseract) {
+      $('uploadImageBtn').title='OCR library chưa tải — kiểm tra Internet rồi tải lại';
+    }
+  },500);
+});
+
+// UX protection: prevent accidental browser zoom and gesture zoom.
+// Note: client-side code cannot securely prevent source inspection; it only disables common accidental gestures/context menu.
+(function(){
+  let lastTouchEnd=0;
+  document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('touchend',e=>{
+    const now=Date.now();
+    if(now-lastTouchEnd<=280) e.preventDefault();
+    lastTouchEnd=now;
+  },{passive:false});
+})();
+
+
+/* Hard anti-zoom guard for mobile Safari + desktop browsers. */
+(function installZoomGuard(){
+  let lastTouchEnd=0;
+
+  document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+  document.addEventListener('gesturechange', e=>e.preventDefault(), {passive:false});
+  document.addEventListener('gestureend', e=>e.preventDefault(), {passive:false});
+
+  document.addEventListener('touchmove', e=>{
+    if(e.touches && e.touches.length>1){
+      e.preventDefault(); // block pinch-to-zoom
+    }
+  }, {passive:false});
+
+  document.addEventListener('touchend', e=>{
+    const now=Date.now();
+    if(now-lastTouchEnd < 320){
+      e.preventDefault(); // block double-tap zoom
+    }
+    lastTouchEnd=now;
+  }, {passive:false});
+
+  document.addEventListener('wheel', e=>{
+    if(e.ctrlKey || e.metaKey) e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey || e.metaKey) && ['+','-','=','_','0'].includes(e.key)){
+      e.preventDefault();
+    }
+  }, {passive:false});
+})();
+
+</script>
+</body>
+</html>
