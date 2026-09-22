@@ -472,7 +472,7 @@ input, textarea{
 
           <div class="flex items-center gap-2 text-[10px] text-slate-500">
             <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
-            QR được đọc trực tiếp trên trình duyệt; OCR dùng Tesseract.js.
+            QR được đọc trực tiếp; OCR dùng Tesseract.js với bộ nhớ OCR dùng lại để tăng tốc và lọc kết quả thiếu tin cậy.
           </div>
         </div>
       </div>
@@ -718,6 +718,101 @@ function transformItem(input, opts){
 
 let qrStream = null;
 let qrScanTimer = null;
+let ocrWorkerPromise = null;
+let ocrBusy = false;
+
+async function getOcrWorker(onProgress=null){
+  if(!window.Tesseract) throw new Error('Tesseract chưa tải được từ CDN.');
+  if(!ocrWorkerPromise){
+    ocrWorkerPromise=(async()=>{
+      const worker=await Tesseract.createWorker('vie+eng',1,{
+        logger:m=>{
+          const cb=worker.__progressHandler;
+          if(cb && typeof m.progress==='number') cb(m);
+        }
+      });
+      await worker.setParameters({
+        tessedit_pageseg_mode:'6',
+        preserve_interword_spaces:'1',
+        user_defined_dpi:'300'
+      });
+      return worker;
+    })().catch(err=>{
+      ocrWorkerPromise=null;
+      throw err;
+    });
+  }
+  const worker=await ocrWorkerPromise;
+  // The worker is shared so language/model loading happens only once.
+  if(onProgress) worker.__progressHandler=onProgress;
+  return worker;
+}
+
+async function recognizeDocumentImage(source,onProgress=null){
+  if(ocrBusy) throw new Error('OCR đang xử lý một ảnh khác');
+  ocrBusy=true;
+  try{
+    const worker=await getOcrWorker(onProgress);
+    worker.__progressHandler=onProgress;
+    return await worker.recognize(source);
+  }finally{
+    ocrBusy=false;
+    const worker=await ocrWorkerPromise.catch?.(()=>null);
+    if(worker) worker.__progressHandler=null;
+  }
+}
+
+function preprocessOcrImage(fileOrBlob,maxSide=1600){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(fileOrBlob);
+    img.onload=()=>{
+      try{
+        const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+        const w=Math.max(1,Math.round(img.naturalWidth*scale));
+        const h=Math.max(1,Math.round(img.naturalHeight*scale));
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(img,0,0,w,h);
+        const data=ctx.getImageData(0,0,w,h);
+        // Fast grayscale + mild contrast normalization. Avoid hard thresholding
+        // because it destroys Vietnamese diacritics and thin document strokes.
+        let min=255,max=0;
+        for(let i=0;i<data.data.length;i+=4){
+          const g=Math.round(.299*data.data[i]+.587*data.data[i+1]+.114*data.data[i+2]);
+          if(g<min) min=g; if(g>max) max=g;
+        }
+        const range=Math.max(40,max-min);
+        for(let i=0;i<data.data.length;i+=4){
+          const g=Math.round(.299*data.data[i]+.587*data.data[i+1]+.114*data.data[i+2]);
+          const v=Math.max(0,Math.min(255,Math.round((g-min)*255/range)));
+          data.data[i]=data.data[i+1]=data.data[i+2]=v;
+        }
+        ctx.putImageData(data,0,0);
+        canvas.toBlob(blob=>{
+          URL.revokeObjectURL(url);
+          if(blob) resolve(blob); else reject(new Error('Không tạo được ảnh OCR'));
+        },'image/jpeg',.88);
+      }catch(e){URL.revokeObjectURL(url);reject(e)}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Không đọc được ảnh'))};
+    img.src=url;
+  });
+}
+
+function isReliableOcrResult(result){
+  const text=(result?.data?.text||'').replace(/\s+/g,' ').trim();
+  const confidence=Number(result?.data?.confidence||0);
+  const words=(result?.data?.words||[]).filter(w=>String(w.text||'').trim());
+  const confidentWords=words.filter(w=>Number(w.confidence||0)>=45);
+  const alphaNum=(text.match(/[A-Za-zÀ-ỹ0-9]/g)||[]).length;
+  const visible=text.replace(/\s/g,'').length;
+  if(!text || visible<4 || alphaNum<3) return false;
+  if(confidence<38 && confidentWords.length===0) return false;
+  if(words.length>=2 && confidentWords.length/words.length<0.25 && confidence<48) return false;
+  return true;
+}
 
 function setCaptureStatus(text, ok=false){
   const el=$('captureStatus');
@@ -997,7 +1092,7 @@ function isUsefulExtractedText(text, confidence=0){
 
 function showScanExtractionError(){
   showToast(
-    'Không quét/trích xuất được dữ liệu. Vui lòng đưa mã QR hoặc tài liệu rõ, đủ sáng và có văn bản vào khung hình.',
+    'Không quét/trích xuất được dữ liệu. Ảnh chưa đủ rõ hoặc không có văn bản. Vui lòng chọn ảnh tài liệu rõ, thẳng và đủ sáng.',
     'error',
     'Không nhận diện được dữ liệu'
   );
@@ -1032,18 +1127,16 @@ async function captureDocumentFromCamera(){
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.92));
     if(!blob) throw new Error('Không tạo được ảnh chụp');
 
-    const result=await Tesseract.recognize(blob,'vie+eng',{
-      logger:m=>{
-        if(typeof m.progress==='number'){
-          const p=Math.round(m.progress*100);
-          setCaptureStatus(`Đang OCR tài liệu • ${p}%`);
-        }
+    const result=await recognizeDocumentImage(blob,m=>{
+      if(typeof m.progress==='number'){
+        const p=Math.round(m.progress*100);
+        setCaptureStatus(`Đang OCR tài liệu • ${p}%`);
       }
     });
 
     const text=(result.data?.text||'').trim();
     const confidence=Number(result.data?.confidence||0);
-    if(!isUsefulExtractedText(text,confidence)){
+    if(!isUsefulExtractedText(text,confidence) || !isReliableOcrResult(result)){
       showScanExtractionError();
       return false;
     }
@@ -1100,22 +1193,22 @@ async function handleImageUpload(event){
     }
 
     if(!window.Tesseract) throw new Error('Tesseract chưa tải được từ CDN. Kiểm tra Internet rồi tải lại trang.');
+    $('ocrProgressLabel').textContent='Đang tối ưu ảnh...';
+    const ocrImage=await preprocessOcrImage(file,1600);
     $('ocrProgressLabel').textContent='OCR đang nhận diện văn bản...';
 
-    const result=await Tesseract.recognize(file,'vie+eng',{
-      logger:m=>{
-        if(typeof m.progress==='number'){
-          const p=Math.round(m.progress*100);
-          $('ocrProgressBar').style.width=p+'%';
-          $('ocrProgress').textContent=p+'%';
-          if(m.status) $('ocrProgressLabel').textContent=m.status;
-        }
+    const result=await recognizeDocumentImage(ocrImage,m=>{
+      if(typeof m.progress==='number'){
+        const p=Math.round(m.progress*100);
+        $('ocrProgressBar').style.width=p+'%';
+        $('ocrProgress').textContent=p+'%';
+        if(m.status) $('ocrProgressLabel').textContent=m.status;
       }
     });
 
     const text=(result.data?.text||'').trim();
     const confidence=Number(result.data?.confidence||0);
-    if(!isUsefulExtractedText(text,confidence)) throw new Error('Ảnh không chứa văn bản đủ rõ để trích xuất');
+    if(!isUsefulExtractedText(text,confidence) || !isReliableOcrResult(result)) throw new Error('Ảnh không chứa văn bản đủ rõ để trích xuất');
     successHaptic();
     putCapturedText(text,'ocr');
     setCaptureStatus('OCR hoàn tất',true);
@@ -1177,7 +1270,10 @@ async function detectQrFromImage(file){
   });
 }
 
-window.addEventListener('beforeunload',stopQrScanner);
+window.addEventListener('beforeunload',async()=>{
+  stopQrScanner();
+  try{ const worker=await ocrWorkerPromise; await worker?.terminate?.(); }catch(_){}
+});
 
 async 
 function requireInput(actionLabel='thao tác'){
@@ -1290,8 +1386,12 @@ window.addEventListener('load',()=>{
     if(!window.jsQR) setCaptureStatus('QR library chưa tải');
     if(!window.Tesseract) {
       $('uploadImageBtn').title='OCR library chưa tải — kiểm tra Internet rồi tải lại';
+    } else {
+      // Warm the OCR worker in the background so the first user image does not
+      // pay the full language-model initialization cost.
+      getOcrWorker().catch(()=>{});
     }
-  },500);
+  },700);
 });
 
 // UX protection: prevent accidental browser zoom and gesture zoom.
